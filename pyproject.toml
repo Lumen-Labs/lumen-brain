@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lumen-brain"
+version = "0.1.0"
+description = "Lumen Brain"
+readme = "README.md"
+license = "MIT"
+authors = [
+  { name="Christian Nonis", email="christiannonis@lumen-labs.ai" }
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/Lumen-Labs/lumen-brain"
+
+[tool.hatch.build.targets.wheel]
+include = ["lumen_brain/**"]
