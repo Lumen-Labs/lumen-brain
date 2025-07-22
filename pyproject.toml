@@ -1,20 +1,25 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[project]
-name = "lumen-brain"
-version = "0.1.0"
-description = "Lumen Brain"
+[tool.poetry]
+name = "lumen_brain"
+version = "0.1.2"
+description = "Operate with Lumen Brain API in Python straight forwardly"
+authors = ["Christian Nonis <christiannonis@lumen-labs.ai>"]
 readme = "README.md"
 license = "MIT"
-authors = [
-  { name="Christian Nonis", email="christiannonis@lumen-labs.ai" }
+packages = [
+    { include = "lumen_brain" }
 ]
-dependencies = []
 
-[project.urls]
-Homepage = "https://github.com/Lumen-Labs/lumen-brain"
+[tool.poetry.dependencies]
+python = "^3.12"
+pydantic = "^2.11.7"
+aiohttp = "^3.12.14"
+requests = "^2.32.4"
+build = "^1.2.2.post1"
+python-dotenv = "^1.1.1"
 
-[tool.hatch.build.targets.wheel]
-include = ["lumen_brain/**"]
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.30.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
