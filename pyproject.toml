@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lumen_brain"
-version = "0.1.2"
+version = "0.3.1"
 description = "Operate with Lumen Brain API in Python straight forwardly"
 authors = ["Christian Nonis <christiannonis@lumen-labs.ai>"]
 readme = "README.md"
@@ -10,7 +10,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.8"
 pydantic = "^2.11.7"
 aiohttp = "^3.12.14"
 requests = "^2.32.4"

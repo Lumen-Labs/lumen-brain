@@ -9,16 +9,16 @@ Modified By: the developer formerly known as Christian Nonis at <alch.infoemail@
 """
 
 import time
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 import requests
 from .constants.endpoints import (
     ALL_MEMORY_CONTENT_TYPES,
     API_KEY_HEADER,
-    MEMORY_CONTENT_TYPES,
     MemoryEndpoints,
     MemoryQueryResponse,
     MemoryUpdateResponse,
+    InfoRetrievalResult,
 )
 
 
@@ -85,14 +85,18 @@ class LumenBrainDriver:
                 raise e
             time.sleep(1)
 
-        return result
+        if result.get("error"):
+            return {
+                "status": "error",
+                "error": result.get("error"),
+            }
+        return MemoryUpdateResponse(**result)
 
     def inject_knowledge(
         self,
         memory_uuid: str,
         type: ALL_MEMORY_CONTENT_TYPES,
         content: str,
-        resource_type: Optional[MEMORY_CONTENT_TYPES] = None,
         conversation_id: Optional[str] = None,
         metadata: Optional[dict] = None,
     ) -> MemoryUpdateResponse:
@@ -116,7 +120,7 @@ class LumenBrainDriver:
                     "memory_id": memory_uuid,
                     "type": type,
                     "content": content,
-                    "resource_type": resource_type,
+                    "resource_type": type,
                     "conversation_id": conversation_id,
                     "metadata": metadata,
                 },
@@ -143,7 +147,12 @@ class LumenBrainDriver:
                 raise e
             time.sleep(1)
 
-        return result
+        if result.get("error"):
+            return {
+                "status": "error",
+                "error": result.get("error"),
+            }
+        return MemoryUpdateResponse(**result)
 
     def query_memory(
         self, text: str, memory_uuid: str, conversation_id: str
@@ -166,14 +175,52 @@ class LumenBrainDriver:
             },
         )
         result = response.json()
-        return result
+        if result.get("error"):
+            return {
+                "status": "error",
+                "error": result.get("error"),
+            }
+        return MemoryQueryResponse(**result)
 
+    def fetch_info(
+        self, memory_uuid: str, entities: List[str], info: str, depth: int = 2
+    ) -> InfoRetrievalResult:
+        """
+        Fetch information and relationships about entities in the memory
 
-if __name__ == "__main__":
-    client = LumenBrainDriver(api_key="your-api-key")
-    client.save_message(
-        memory_uuid="your-memory-uuid",
-        type="message",
-        content="Your message content",
-        role="user",
-    )
+        Args:
+            memory_uuid: The UUID of the memory to query (usually it's related to a user).
+            entities: The entities that are related to the information to be retrieved.
+            info: The information to be retrieved.
+            depth: The higher relation depth that will be looked for.
+        """
+
+        if not memory_uuid:
+            raise ValueError("Memory UUID is required")
+        if not entities:
+            raise ValueError("Entities are required and must be a list of strings")
+        if not info:
+            raise ValueError("Info is required and must be a string")
+
+        try:
+            response = requests.get(
+                url=MemoryEndpoints.QUERY_ENTITIES.value,
+                headers={API_KEY_HEADER: self.api_key},
+                params={
+                    "memory_uuid": memory_uuid,
+                    "entities": entities,
+                    "info": info,
+                    "depth": depth,
+                },
+            )
+        except Exception as e:
+            print("[LUMEN BRAIN] Error fetching info", e)
+            raise e
+
+        result = response.json()
+        if result.get("error"):
+            return {
+                "status": "error",
+                "error": result.get("error"),
+            }
+        return InfoRetrievalResult(**result)

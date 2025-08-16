@@ -8,8 +8,7 @@ Modified By: the developer formerly known as Christian Nonis at <alch.infoemail@
 -----
 """
 
-import asyncio
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 import aiohttp
 from .constants.endpoints import (
@@ -18,6 +17,7 @@ from .constants.endpoints import (
     MemoryEndpoints,
     MemoryQueryResponse,
     MemoryUpdateResponse,
+    InfoRetrievalResult,
 )
 
 
@@ -48,6 +48,8 @@ class AsyncLumenBrainDriver:
         """
 
         task_id = None
+        conversation_id = None
+        memory_id = None
 
         async with aiohttp.ClientSession() as session:
             try:
@@ -55,7 +57,7 @@ class AsyncLumenBrainDriver:
                     url=MemoryEndpoints.UPDATE.value,
                     headers={API_KEY_HEADER: self.api_key},
                     json={
-                        "memory_id": memory_uuid,
+                        "memory_uuid": memory_uuid,
                         "type": "message",
                         "content": content,
                         "role": role,
@@ -65,27 +67,24 @@ class AsyncLumenBrainDriver:
                 ) as response:
                     result = await response.json()
                     task_id = result.get("task_id")
+                    conversation_id = result.get("conversation_id")
+                    memory_id = result.get("memory_id")
             except Exception as e:
                 print("[LUMEN BRAIN] Error saving message", e)
                 raise e
 
-            result = None
+            if not conversation_id or memory_id:
+                return {
+                    "error": "Failed to save message",
+                    "task_id": task_id,
+                }
 
-            while not result:
-                try:
-                    async with session.get(
-                        url=f"{MemoryEndpoints.TASKS.value}/{task_id}",
-                        headers={API_KEY_HEADER: self.api_key},
-                    ) as result_res:
-                        if result_res.status == 200:
-                            result = await result_res.json()
-                            break
-                except Exception as e:
-                    print("[LUMEN BRAIN] Error polling task", e)
-                    raise e
-                await asyncio.sleep(1)
-
-            return result
+            if result.get("error"):
+                return {
+                    "status": "error",
+                    "error": result.get("error"),
+                }
+            return MemoryUpdateResponse(**result)
 
     async def inject_knowledge(
         self,
@@ -104,6 +103,8 @@ class AsyncLumenBrainDriver:
             metadata: The optional metadata to add to the memory.
         """
         task_id = None
+        conversation_id = None
+        memory_id = None
 
         async with aiohttp.ClientSession() as session:
             try:
@@ -111,7 +112,7 @@ class AsyncLumenBrainDriver:
                     url=MemoryEndpoints.UPDATE.value,
                     headers={API_KEY_HEADER: self.api_key},
                     json={
-                        "memory_id": memory_uuid,
+                        "memory_uuid": memory_uuid,
                         "type": resource_type,
                         "content": content,
                         "resource_type": resource_type,
@@ -120,27 +121,24 @@ class AsyncLumenBrainDriver:
                 ) as response:
                     result = await response.json()
                     task_id = result.get("task_id")
+                    memory_id = result.get("memory_id")
+                    conversation_id = result.get("conversation_id")
             except Exception as e:
                 print("[LUMEN BRAIN] Error injecting knowledge", e)
                 raise e
 
-            result = None
+            if not conversation_id or memory_id:
+                return {
+                    "error": "Failed to inject knowledge",
+                    "task_id": task_id,
+                }
 
-            while not result:
-                try:
-                    async with session.get(
-                        url=f"{MemoryEndpoints.TASKS.value}/{task_id}",
-                        headers={API_KEY_HEADER: self.api_key},
-                    ) as result_res:
-                        if result_res.status == 200:
-                            result = await result_res.json()
-                            break
-                except Exception as e:
-                    print("[LUMEN BRAIN] Error polling knowledge injection task", e)
-                    raise e
-                await asyncio.sleep(1)
-
-            return result
+            if result.get("error"):
+                return {
+                    "status": "error",
+                    "error": result.get("error"),
+                }
+            return MemoryUpdateResponse(**result)
 
     async def query_memory(
         self, text: str, memory_uuid: str, conversation_id: str
@@ -159,9 +157,60 @@ class AsyncLumenBrainDriver:
                 headers={API_KEY_HEADER: self.api_key},
                 json={
                     "text": text,
-                    "memory_id": memory_uuid,
+                    "memory_uuid": memory_uuid,
                     "conversation_id": conversation_id,
                 },
             ) as response:
                 result = await response.json()
-                return result
+                try:
+                    if result.get("error"):
+                        return {
+                            "status": "error",
+                            "error": result.get("error"),
+                        }
+                    return MemoryQueryResponse(**result)
+                except Exception as e:
+                    print("[LUMEN BRAIN] Error querying memory", e)
+                    raise e
+
+    async def fetch_info(
+        self, memory_uuid: str, entities: List[str], info: str, depth: int = 2
+    ) -> InfoRetrievalResult:
+        """
+        Fetch information and relationships about entities in the memory
+
+        Args:
+            memory_uuid: The UUID of the memory to query (usually it's related to a user).
+            entities: The entities that are related to the information to be retrieved.
+            info: The information to be retrieved.
+            depth: The higher relation depth that will be looked for.
+        """
+        if not memory_uuid:
+            raise ValueError("Memory UUID is required")
+        if not entities:
+            raise ValueError("Entities are required and must be a list of strings")
+        if not info:
+            raise ValueError("Info is required and must be a string")
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                url=MemoryEndpoints.QUERY_ENTITIES.value,
+                headers={API_KEY_HEADER: self.api_key},
+                params={
+                    "memory_uuid": memory_uuid,
+                    "entities": entities,
+                    "info": info,
+                    "depth": depth,
+                },
+            ) as response:
+                result = await response.json()
+                try:
+                    if result.get("error"):
+                        return {
+                            "status": "error",
+                            "error": result.get("error"),
+                        }
+                    return InfoRetrievalResult(**result)
+                except Exception as e:
+                    print("[LUMEN BRAIN] Error fetching info", e)
+                    raise e

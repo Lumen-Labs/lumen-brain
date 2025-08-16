@@ -84,6 +84,21 @@ result = client.query_memory(
 )
 ```
 
+### Fetch info
+
+```python
+
+result = client.fetch_info(
+    memory_uuid="your-memory-uuid", # the unique identifier provided by your app, if not provided, a new memory will be created
+    entities=["john"], # the entities that are related to the information to be retrieved
+    info="wedding date", # the information to be retrieved
+    depth=2 # the higher relation depth that will be looked for
+)
+result.nodes # the nodes that are related to the information to be retrieved
+result.most_relevant_relation # the most relevant relation between the entities and the information to be retrieved
+result.most_relevant_confidence # the confidence of the most relevant relation (0-1)
+```
+
 ## License
 
 This project is licensed under the MIT License.
