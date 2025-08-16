@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "lumen_brain"
-version = "0.3.1"
+version = "0.3.2"
 description = "Operate with Lumen Brain API in Python straight forwardly"
 authors = ["Christian Nonis <christiannonis@lumen-labs.ai>"]
 readme = "README.md"

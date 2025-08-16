@@ -71,6 +71,7 @@ class Node(BaseModel):
     name: str
     relationships: Optional[List[Relationship]] = []
     source_id: str
+    phrase: str
 
     @field_validator("relationships", mode="before")
     @classmethod
