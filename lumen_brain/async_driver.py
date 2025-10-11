@@ -8,6 +8,7 @@ Modified By: the developer formerly known as Christian Nonis at <alch.infoemail@
 -----
 """
 
+import asyncio
 from typing import List, Literal, Optional
 
 import aiohttp
@@ -106,39 +107,83 @@ class AsyncLumenBrainDriver:
         conversation_id = None
         memory_id = None
 
-        async with aiohttp.ClientSession() as session:
+        max_retries = 3
+        base_delay = 1
+
+        for attempt in range(max_retries):
             try:
-                async with session.post(
-                    url=MemoryEndpoints.UPDATE.value,
-                    headers={API_KEY_HEADER: self.api_key},
-                    json={
-                        "memory_uuid": memory_uuid,
-                        "type": resource_type,
-                        "content": content,
-                        "resource_type": resource_type,
-                        "metadata": metadata,
-                    },
-                ) as response:
-                    result = await response.json()
-                    task_id = result.get("task_id")
-                    memory_id = result.get("memory_id")
-                    conversation_id = result.get("conversation_id")
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        url=MemoryEndpoints.UPDATE.value,
+                        headers={API_KEY_HEADER: self.api_key},
+                        json={
+                            "memory_uuid": memory_uuid,
+                            "type": resource_type,
+                            "content": content,
+                            "resource_type": resource_type,
+                            "metadata": metadata,
+                        },
+                    ) as response:
+                        if response.status in [502, 503, 504]:
+                            error_text = await response.text()
+                            if attempt < max_retries - 1:
+                                delay = base_delay * (2**attempt)
+                                print(
+                                    f"[LUMEN BRAIN] Retry {attempt + 1}/{max_retries} after {delay}s due to status {response.status}"
+                                )
+                                await asyncio.sleep(delay)
+                                continue
+                            raise Exception(
+                                f"API returned status {response.status} after {max_retries} attempts: {error_text[:200]}"
+                            )
+
+                        if response.status != 200:
+                            error_text = await response.text()
+                            raise Exception(
+                                f"API returned status {response.status}: {error_text[:200]}"
+                            )
+
+                        content_type = response.headers.get("Content-Type", "")
+                        if "application/json" not in content_type:
+                            error_text = await response.text()
+                            raise Exception(
+                                f"Expected JSON response but got {content_type}: {error_text[:200]}"
+                            )
+
+                        result = await response.json()
+                        task_id = result.get("task_id")
+                        memory_id = result.get("memory_id")
+                        conversation_id = result.get("conversation_id")
+
+                        if not conversation_id or not memory_id:
+                            return {
+                                "error": "Failed to inject knowledge",
+                                "task_id": task_id,
+                            }
+
+                        if result.get("error"):
+                            return {
+                                "status": "error",
+                                "error": result.get("error"),
+                            }
+                        return MemoryUpdateResponse(**result)
+
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2**attempt)
+                    print(
+                        f"[LUMEN BRAIN] Retry {attempt + 1}/{max_retries} after {delay}s due to network error: {e}"
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                print(
+                    f"[LUMEN BRAIN] Error injecting knowledge after {max_retries} attempts",
+                    e,
+                )
+                raise e
             except Exception as e:
                 print("[LUMEN BRAIN] Error injecting knowledge", e)
                 raise e
-
-            if not conversation_id or memory_id:
-                return {
-                    "error": "Failed to inject knowledge",
-                    "task_id": task_id,
-                }
-
-            if result.get("error"):
-                return {
-                    "status": "error",
-                    "error": result.get("error"),
-                }
-            return MemoryUpdateResponse(**result)
 
     async def query_memory(
         self, text: str, memory_uuid: str, conversation_id: str
