@@ -10,6 +10,7 @@ Modified By: the developer formerly known as Christian Nonis at <alch.infoemail@
 
 import time
 from typing import List, Literal, Optional
+from urllib.parse import quote
 
 import requests
 from .constants.endpoints import (
@@ -28,6 +29,17 @@ class LumenBrainDriver:
             raise ValueError("Lumen Brain API key is required")
 
         self.api_key = api_key
+
+    def cancel_ingestion(
+        self, task_id: str, mode: Literal["keep_saved", "rollback"]
+    ) -> dict:
+        """Request cancellation and return the accepted state."""
+        url = f"{MemoryEndpoints.TASKS.value}/{quote(task_id, safe='')}/cancel"
+        response = requests.post(
+            url, headers={API_KEY_HEADER: self.api_key}, json={"mode": mode}, timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
 
     def save_message(
         self,

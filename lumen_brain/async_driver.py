@@ -10,6 +10,7 @@ Modified By: the developer formerly known as Christian Nonis at <alch.infoemail@
 
 import asyncio
 from typing import List, Literal, Optional
+from urllib.parse import quote
 
 import aiohttp
 from .constants.endpoints import (
@@ -28,6 +29,19 @@ class AsyncLumenBrainDriver:
             raise ValueError("Lumen Brain API key is required")
 
         self.api_key = api_key
+
+    async def cancel_ingestion(
+        self, task_id: str, mode: Literal["keep_saved", "rollback"]
+    ) -> dict:
+        """Request cancellation and return the accepted state."""
+        url = f"{MemoryEndpoints.TASKS.value}/{quote(task_id, safe='')}/cancel"
+        timeout = aiohttp.ClientTimeout(total=30)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(
+                url, headers={API_KEY_HEADER: self.api_key}, json={"mode": mode}
+            ) as response:
+                response.raise_for_status()
+                return await response.json()
 
     async def save_message(
         self,
