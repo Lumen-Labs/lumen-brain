@@ -2,6 +2,7 @@ import json
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import unquote
 
 from lumen_brain import AsyncLumenBrainDriver, LumenBrainDriver
 from lumen_brain.constants.ingestion import BrainIngestionConnection
@@ -21,11 +22,11 @@ class IngestionControlTests(unittest.IsolatedAsyncioTestCase):
 
             def do_POST(self):
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-                calls.append((self.path, self.headers["BrainPAT"], self.headers["X-Brain-ID"], body))
+                calls.append((unquote(self.path), self.headers["BrainPAT"], self.headers["X-Brain-ID"], body))
                 self.respond(202, {"task_id": "task:1", "status": "cancelling", **body})
 
             def do_GET(self):
-                calls.append((self.path, self.headers["BrainPAT"], self.headers["X-Brain-ID"]))
+                calls.append((unquote(self.path), self.headers["BrainPAT"], self.headers["X-Brain-ID"]))
                 self.respond(200, {"task_id": "task:1", "status": "cancelled"})
 
         server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -46,8 +47,8 @@ class IngestionControlTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await async_driver.cancel_ingestion("task:1", "rollback"))["status"], "cancelling")
         self.assertEqual((await async_driver.get_ingestion_task("task:1"))["status"], "cancelled")
         self.assertEqual(self.calls, [
-            ("/tasks/task%3A1/cancel", "test-token", "test-brain", {"mode": "keep_saved"}),
-            ("/tasks/task%3A1", "test-token", "test-brain"),
-            ("/tasks/task%3A1/cancel", "test-token", "test-brain", {"mode": "rollback"}),
-            ("/tasks/task%3A1", "test-token", "test-brain"),
+            ("/tasks/task:1/cancel", "test-token", "test-brain", {"mode": "keep_saved"}),
+            ("/tasks/task:1", "test-token", "test-brain"),
+            ("/tasks/task:1/cancel", "test-token", "test-brain", {"mode": "rollback"}),
+            ("/tasks/task:1", "test-token", "test-brain"),
         ])
