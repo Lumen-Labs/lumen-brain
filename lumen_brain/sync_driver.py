@@ -10,8 +10,10 @@ Modified By: the developer formerly known as Christian Nonis at <alch.infoemail@
 
 import time
 from typing import List, Literal, Optional
+from urllib.parse import quote
 
 import requests
+from .constants.ingestion import BrainIngestionConnection
 from .constants.endpoints import (
     ALL_MEMORY_CONTENT_TYPES,
     API_KEY_HEADER,
@@ -23,11 +25,38 @@ from .constants.endpoints import (
 
 
 class LumenBrainDriver:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, *, ingestion: Optional[BrainIngestionConnection] = None):
         if not api_key:
             raise ValueError("Lumen Brain API key is required")
 
         self.api_key = api_key
+        self.ingestion = ingestion
+
+    def _ingestion_task_request(self, task_id: str):
+        if self.ingestion is not None:
+            return self.ingestion.task_request(task_id)
+        return (
+            f"{MemoryEndpoints.TASKS.value}/{quote(task_id, safe='')}",
+            {API_KEY_HEADER: self.api_key},
+        )
+
+    def cancel_ingestion(
+        self, task_id: str, mode: Literal["keep_saved", "rollback"]
+    ) -> dict:
+        """Request cancellation and return the accepted state."""
+        url, headers = self._ingestion_task_request(task_id)
+        url = f"{url}/cancel"
+        response = requests.post(
+            url, headers=headers, json={"mode": mode}, timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_ingestion_task(self, task_id: str) -> dict:
+        url, headers = self._ingestion_task_request(task_id)
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        return response.json()
 
     def save_message(
         self,

@@ -10,8 +10,10 @@ Modified By: the developer formerly known as Christian Nonis at <alch.infoemail@
 
 import asyncio
 from typing import List, Literal, Optional
+from urllib.parse import quote
 
 import aiohttp
+from .constants.ingestion import BrainIngestionConnection
 from .constants.endpoints import (
     API_KEY_HEADER,
     MEMORY_CONTENT_TYPES,
@@ -23,11 +25,41 @@ from .constants.endpoints import (
 
 
 class AsyncLumenBrainDriver:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, *, ingestion: Optional[BrainIngestionConnection] = None):
         if not api_key:
             raise ValueError("Lumen Brain API key is required")
 
         self.api_key = api_key
+        self.ingestion = ingestion
+
+    def _ingestion_task_request(self, task_id: str):
+        if self.ingestion is not None:
+            return self.ingestion.task_request(task_id)
+        return (
+            f"{MemoryEndpoints.TASKS.value}/{quote(task_id, safe='')}",
+            {API_KEY_HEADER: self.api_key},
+        )
+
+    async def cancel_ingestion(
+        self, task_id: str, mode: Literal["keep_saved", "rollback"]
+    ) -> dict:
+        """Request cancellation and return the accepted state."""
+        url, headers = self._ingestion_task_request(task_id)
+        url = f"{url}/cancel"
+        timeout = aiohttp.ClientTimeout(total=30)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(
+                url, headers=headers, json={"mode": mode}
+            ) as response:
+                response.raise_for_status()
+                return await response.json()
+
+    async def get_ingestion_task(self, task_id: str) -> dict:
+        url, headers = self._ingestion_task_request(task_id)
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
+            async with session.get(url, headers=headers) as response:
+                response.raise_for_status()
+                return await response.json()
 
     async def save_message(
         self,

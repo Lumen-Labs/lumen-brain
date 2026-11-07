@@ -102,3 +102,21 @@ result.most_relevant_confidence # the confidence of the most relevant relation (
 ## License
 
 This project is licensed under the MIT License.
+
+### Cancel a BrainAPI ingestion
+
+For an ingestion task returned by a BrainAPI engine, configure the engine connection on either driver.
+
+```python
+from lumen_brain.constants.ingestion import BrainIngestionConnection
+from lumen_brain.sync_driver import LumenBrainDriver
+
+driver = LumenBrainDriver(
+    api_key,
+    ingestion=BrainIngestionConnection(engine_url, brain_id, brain_pat),
+)
+result = driver.cancel_ingestion(task_id, "keep_saved")
+state = driver.get_ingestion_task(task_id)
+```
+
+Use `rollback` to discard staged output. Poll until the task is terminal. A cancellation request can return HTTP 409 if the selected mode is unavailable or publication already started.
