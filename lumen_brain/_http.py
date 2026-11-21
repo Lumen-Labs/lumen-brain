@@ -45,7 +45,8 @@ def merge_headers(
 def decode_body(content: bytes, content_type: str) -> Any:
     if not content:
         return None
-    if "json" in content_type or not content_type:
+    media_type = content_type.split(";", 1)[0].strip().lower()
+    if "json" in media_type or not media_type:
         try:
             return json.loads(content.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):

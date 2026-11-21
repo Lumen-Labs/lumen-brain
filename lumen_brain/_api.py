@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Optional, Type, Union
+from urllib.parse import quote
 
 from pydantic import BaseModel
 
@@ -70,10 +71,16 @@ class RequestSpec:
 
 def _model_dump(value: Any) -> Any:
     if isinstance(value, BaseModel):
-        return value.model_dump(exclude_none=True)
+        return value.model_dump(mode="json", exclude_none=True)
     if isinstance(value, Mapping):
         return dict(value)
     return value
+
+
+def _optional_dict(value: Optional[JsonMapping]) -> Optional[dict[str, Any]]:
+    if value is None:
+        return None
+    return dict(value)
 
 
 def ingest_text(
@@ -91,8 +98,8 @@ def ingest_text(
     payload = drop_none(
         {
             "data": {"data_type": "text", "text_data": text},
-            "meta_keys": meta_keys,
-            "identification_params": identification_params,
+            "meta_keys": _optional_dict(meta_keys),
+            "identification_params": _optional_dict(identification_params),
             "observate_for": list(observate_for) if observate_for else None,
             "preferred_extraction_entities": (
                 list(preferred_extraction_entities) if preferred_extraction_entities else None
@@ -130,8 +137,8 @@ def ingest_json(
     payload = drop_none(
         {
             "data": {"data_type": "json", "json_data": dict(json_data)},
-            "meta_keys": meta_keys,
-            "identification_params": identification_params,
+            "meta_keys": _optional_dict(meta_keys),
+            "identification_params": _optional_dict(identification_params),
             "observate_for": list(observate_for) if observate_for else None,
             "preferred_extraction_entities": (
                 list(preferred_extraction_entities) if preferred_extraction_entities else None
@@ -937,7 +944,7 @@ def ingestion_capabilities() -> RequestSpec:
 def ingest_group(group_tracking: str) -> RequestSpec:
     return RequestSpec(
         "GET",
-        f"/meta/ingest-groups/{group_tracking}",
+        f"/meta/ingest-groups/{quote(group_tracking, safe='')}",
         model=IngestGroupMeterResponse,
     )
 

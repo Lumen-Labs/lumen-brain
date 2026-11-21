@@ -61,7 +61,10 @@ def normalize_base_url(base_url: str) -> str:
     value = base_url.strip().rstrip("/")
     if not value:
         raise ConfigurationError("base_url must be a non-empty URL")
-    parsed = urlparse(value)
+    try:
+        parsed = urlparse(value)
+    except ValueError as exc:
+        raise ConfigurationError("base_url must be an absolute http(s) URL") from exc
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise ConfigurationError("base_url must be an absolute http(s) URL")
     return value

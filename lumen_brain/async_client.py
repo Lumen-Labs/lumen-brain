@@ -263,15 +263,20 @@ class AsyncLumenBrain:
         poll_interval: float = 1.0,
         timeout: float = 120.0,
     ) -> TaskStateResponse:
-        deadline = asyncio.get_event_loop().time() + timeout
-        last: Optional[TaskStateResponse] = None
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
+        last = await self.get_task(task_id, brain_id=brain_id)
         while True:
-            last = await self.get_task(task_id, brain_id=brain_id)
             if last.is_terminal:
                 return last
-            if asyncio.get_event_loop().time() >= deadline:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                raise TaskTimeoutError(task_id, last.status)
+            if remaining <= poll_interval:
+                await asyncio.sleep(remaining)
                 raise TaskTimeoutError(task_id, last.status)
             await asyncio.sleep(poll_interval)
+            last = await self.get_task(task_id, brain_id=brain_id)
 
     async def health(self):
         return await self._send(_api.health())

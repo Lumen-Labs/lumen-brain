@@ -1,6 +1,14 @@
 from __future__ import annotations
 
+from collections import UserDict
+from datetime import date
+
+import pytest
+from pydantic import ValidationError
+
 from lumen_brain import _api
+from lumen_brain._base import parse_spec_response
+from lumen_brain.models import PartialNode
 
 
 def test_ingest_text_payload() -> None:
@@ -24,6 +32,24 @@ def test_ingest_text_payload() -> None:
 def test_ingest_json_payload() -> None:
     spec = _api.ingest_json({"title": "Ada"})
     assert spec.json["data"] == {"data_type": "json", "json_data": {"title": "Ada"}}
+
+
+def test_ingest_converts_mapping_metadata() -> None:
+    spec = _api.ingest_text(
+        "hello",
+        meta_keys=UserDict({"source": "notes"}),
+        identification_params=UserDict({"conversation_id": "c1"}),
+    )
+    assert type(spec.json["meta_keys"]) is dict
+    assert spec.json["meta_keys"] == {"source": "notes"}
+    assert type(spec.json["identification_params"]) is dict
+    spec_empty = _api.ingest_json({"title": "Ada"}, meta_keys={})
+    assert spec_empty.json["meta_keys"] == {}
+
+
+def test_structured_ingest_serializes_dates() -> None:
+    dumped = _api._model_dump(PartialNode(name="Ada", properties={"joined": date(2024, 1, 1)}))
+    assert dumped["properties"]["joined"] == "2024-01-01"
 
 
 def test_context_includes_as_of() -> None:
@@ -74,3 +100,10 @@ def test_graph_and_system_paths() -> None:
     purge = _api.purge_task("t1", digest="abc")
     assert purge.path == "/tasks/t1/purge"
     assert purge.json == {"digest": "abc"}
+    assert _api.ingest_group("batch#1").path == "/meta/ingest-groups/batch%231"
+
+
+def test_modeled_response_rejects_empty_body() -> None:
+    spec = _api.ingest_text("hello")
+    with pytest.raises(ValidationError):
+        parse_spec_response(spec, None)

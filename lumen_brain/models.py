@@ -39,7 +39,7 @@ class LoginInfoResponse(APIModel):
 class Brain(APIModel):
     id: Optional[str] = None
     name_key: str
-    pat: Optional[str] = None
+    pat: Optional[str] = Field(default=None, repr=False)
 
 
 class BrainLifecycleResponse(APIModel):

@@ -239,6 +239,24 @@ def test_tasks_wait_and_timeout() -> None:
         assert exc.value.last_status == "running"
 
 
+def test_wait_for_task_clamps_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
+    sleeps: list[float] = []
+    monkeypatch.setattr("lumen_brain.client.time.sleep", lambda seconds: sleeps.append(seconds))
+    mock = MockAPI()
+    mock.route(
+        "GET",
+        "/tasks/slow",
+        json_body={"status": "running", "task_id": "slow"},
+    )
+    with sync_client(mock) as brain:
+        with pytest.raises(TaskTimeoutError) as exc:
+            brain.wait_for_task("slow", poll_interval=60, timeout=0.05)
+    assert exc.value.last_status == "running"
+    assert len(sleeps) == 1
+    assert 0 < sleeps[0] <= 0.05 + 0.02
+    assert len(mock.calls) == 1
+
+
 def test_error_envelope_from_client() -> None:
     mock = MockAPI()
     mock.route(

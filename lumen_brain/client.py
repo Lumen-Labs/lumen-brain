@@ -258,14 +258,18 @@ class LumenBrain:
         timeout: float = 120.0,
     ) -> TaskStateResponse:
         deadline = time.monotonic() + timeout
-        last: Optional[TaskStateResponse] = None
+        last = self.get_task(task_id, brain_id=brain_id)
         while True:
-            last = self.get_task(task_id, brain_id=brain_id)
             if last.is_terminal:
                 return last
-            if time.monotonic() >= deadline:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TaskTimeoutError(task_id, last.status)
+            if remaining <= poll_interval:
+                time.sleep(remaining)
                 raise TaskTimeoutError(task_id, last.status)
             time.sleep(poll_interval)
+            last = self.get_task(task_id, brain_id=brain_id)
 
     def health(self):
         return self._send(_api.health())

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from lumen_brain import AuthenticationError, BrainAPIError
-from lumen_brain._http import auth_headers, merge_headers, raise_for_status
+from lumen_brain._http import auth_headers, decode_body, merge_headers, raise_for_status
 from lumen_brain.errors import error_from_response
 
 
@@ -54,6 +54,19 @@ def test_error_envelope() -> None:
     assert err.resolution == "Provide a valid PAT"
     assert err.request_id == "req-1"
     assert "Invalid token" in str(err)
+
+
+def test_decode_body_ignores_content_type_case() -> None:
+    body = decode_body(
+        b'{"message":"accepted","task_id":"t1"}',
+        "Application/JSON; charset=utf-8",
+    )
+    assert body == {"message": "accepted", "task_id": "t1"}
+
+
+def test_decode_body_without_content_type() -> None:
+    body = decode_body(b'{"ok": true}', "")
+    assert body == {"ok": True}
 
 
 def test_raise_for_status_accepts_expected() -> None:
