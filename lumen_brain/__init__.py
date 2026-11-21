@@ -1,14 +1,44 @@
-"""
-File: /__init__.py
-Created Date: Tuesday July 22nd 2025
-Author: Christian Nonis <alch.infoemail@gmail.com>
------
-Last Modified: Tuesday July 22nd 2025 11:40:55 am
-Modified By: the developer formerly known as Christian Nonis at <alch.infoemail@gmail.com>
------
-"""
+from lumen_brain.async_client import AsyncLumenBrain, AsyncLumenBrainDriver
+from lumen_brain.client import LumenBrain, LumenBrainDriver
+from lumen_brain.config import (
+    KNOWN_REGIONS,
+    REGIONAL_HOST_TEMPLATE,
+    ConfigurationError,
+    regional_base_url,
+)
+from lumen_brain.errors import (
+    AuthenticationError,
+    BrainAPIError,
+    LumenBrainError,
+    TaskTimeoutError,
+)
+from lumen_brain.models import (
+    GetContextResponse,
+    IngestionAcceptedResponse,
+    RetrieveResponse,
+    SearchResponse,
+    TaskStateResponse,
+)
 
-from .async_driver import AsyncLumenBrainDriver
-from .sync_driver import LumenBrainDriver
+__version__ = "0.4.0"
 
-__all__ = ["AsyncLumenBrainDriver", "LumenBrainDriver"]
+__all__ = [
+    "AsyncLumenBrain",
+    "AsyncLumenBrainDriver",
+    "AuthenticationError",
+    "BrainAPIError",
+    "ConfigurationError",
+    "GetContextResponse",
+    "IngestionAcceptedResponse",
+    "KNOWN_REGIONS",
+    "LumenBrain",
+    "LumenBrainDriver",
+    "LumenBrainError",
+    "REGIONAL_HOST_TEMPLATE",
+    "RetrieveResponse",
+    "SearchResponse",
+    "TaskStateResponse",
+    "TaskTimeoutError",
+    "__version__",
+    "regional_base_url",
+]
