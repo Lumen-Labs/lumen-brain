@@ -4,6 +4,7 @@ import pytest
 
 from lumen_brain import (
     KNOWN_REGIONS,
+    AsyncLumenBrain,
     ConfigurationError,
     LumenBrain,
     regional_base_url,
@@ -68,6 +69,12 @@ def test_constructor_rejects_explicit_base_url_and_region() -> None:
             base_url="https://brain.example.test",
             region="us-east1",
         )
+    with pytest.raises(ConfigurationError, match="either base_url or region"):
+        AsyncLumenBrain(
+            pat="test-pat",
+            base_url="https://brain.example.test",
+            region="europe-central2",
+        )
 
 
 def test_constructor_rejects_region_when_env_base_url_set(
@@ -76,6 +83,23 @@ def test_constructor_rejects_region_when_env_base_url_set(
     monkeypatch.setenv("LUMEN_BRAIN_BASE_URL", "https://env.example.test")
     with pytest.raises(ConfigurationError, match="either base_url or region"):
         LumenBrain(pat="test-pat", region="us-east1")
+
+
+def test_constructor_rejects_base_url_when_env_region_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LUMEN_BRAIN_REGION", "europe-central2")
+    with pytest.raises(ConfigurationError, match="either base_url or region"):
+        LumenBrain(pat="test-pat", base_url="https://brain.example.test")
+
+
+def test_constructor_rejects_both_env_host_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LUMEN_BRAIN_BASE_URL", "https://env.example.test")
+    monkeypatch.setenv("LUMEN_BRAIN_REGION", "us-east1")
+    with pytest.raises(ConfigurationError, match="either base_url or region"):
+        LumenBrain(pat="test-pat")
 
 
 def test_brain_pat_omitted_from_repr() -> None:

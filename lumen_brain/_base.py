@@ -7,7 +7,6 @@ from lumen_brain._api import RequestSpec
 from lumen_brain._http import merge_headers, raise_for_status
 from lumen_brain.config import (
     AuthScheme,
-    ConfigurationError,
     resolve_base_url,
 )
 from lumen_brain.errors import AuthenticationError
@@ -54,13 +53,9 @@ class ClientSettings:
         )
         env_base = _first_env("LUMEN_BRAIN_BASE_URL", "BRAINAPI_BASE_URL")
         env_region = _first_env("LUMEN_BRAIN_REGION", "BRAINAPI_REGION")
-        if base_url and region:
-            raise ConfigurationError("pass either base_url or region, not both")
-        if region and env_base:
-            raise ConfigurationError("pass either base_url or region, not both")
         self.base_url = resolve_base_url(
             base_url=base_url or env_base,
-            region=None if (base_url or env_base) else (region or env_region),
+            region=region or env_region,
         )
         self.auth_scheme = auth_scheme
         self.timeout = timeout

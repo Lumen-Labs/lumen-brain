@@ -91,7 +91,11 @@ def test_fact_and_conflict_paths() -> None:
 
 
 def test_graph_and_system_paths() -> None:
-    assert _api.entity_info("Ada", query="role", max_depth=3).params["max_depth"] == 3
+    assert _api.entity_info("Ada", "role", max_depth=3).params["max_depth"] == 3
+    with pytest.raises(TypeError):
+        _api.entity_info("Ada")
+    with pytest.raises(ValueError, match="query is required"):
+        _api.entity_info("Ada", query="  ")
     assert _api.neighbors("uuid-1").path == "/retrieve/entities/neighbors"
     assert _api.add_entity("Ada", labels=["Person"]).path == "/model/entity"
     assert _api.create_brain("new-brain").requires_brain is False

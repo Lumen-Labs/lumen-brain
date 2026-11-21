@@ -200,7 +200,7 @@ def test_facts_conflicts_and_graph() -> None:
         assert conflicts.count == 1
         resolved = brain.resolve_conflict("c1", winning_fact_id="f1")
         assert resolved.conflict["status"] == "resolved"
-        info = brain.entity_info("Ada")
+        info = brain.entity_info("Ada", query="role")
         assert info.target_node.name == "Ada"
         listed = brain.list_entities(query_text="Ada")
         assert listed.total == 1
@@ -359,3 +359,15 @@ def test_reject_reset_dismiss_neighbors() -> None:
         assert neighbors.count == 1
     assert mock.json_body(mock.calls[2]) == {"notes": "duplicate"}
     assert mock.calls[3].url.params["uuid"] == "uuid-ada"
+
+
+def test_entity_info_requires_query_before_request() -> None:
+    mock = MockAPI()
+    with sync_client(mock) as brain:
+        with pytest.raises(TypeError):
+            brain.entity_info("Ada")
+        with pytest.raises(ValueError, match="query is required"):
+            brain.entity_info("Ada", query="   ")
+        with pytest.raises(ValueError, match="info is required"):
+            brain.fetch_info(entities=["Ada"])
+    assert mock.calls == []

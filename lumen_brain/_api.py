@@ -341,10 +341,12 @@ def retrieve(
 
 def entity_info(
     target: str,
+    query: str,
     *,
-    query: Optional[str] = None,
     max_depth: int = 2,
 ) -> RequestSpec:
+    if not isinstance(query, str) or not query.strip():
+        raise ValueError("query is required")
     return RequestSpec(
         "GET",
         "/retrieve/entity/info",

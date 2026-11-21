@@ -128,8 +128,10 @@ class LumenBrain:
     def retrieve(self, text: str, *, brain_id: Optional[str] = None, **kwargs: Any):
         return self._send(_api.retrieve(text, **kwargs), brain_id=brain_id)
 
-    def entity_info(self, target: str, *, brain_id: Optional[str] = None, **kwargs: Any):
-        return self._send(_api.entity_info(target, **kwargs), brain_id=brain_id)
+    def entity_info(
+        self, target: str, query: str, *, brain_id: Optional[str] = None, **kwargs: Any
+    ):
+        return self._send(_api.entity_info(target, query, **kwargs), brain_id=brain_id)
 
     def entity_context(self, target: str, *, brain_id: Optional[str] = None, **kwargs: Any):
         return self._send(_api.entity_context(target, **kwargs), brain_id=brain_id)
@@ -389,6 +391,8 @@ class LumenBrain:
         resolved_target = target or (",".join(entities) if entities else None)
         if not resolved_target:
             raise ValueError("entities or target is required")
+        if not isinstance(info, str) or not info.strip():
+            raise ValueError("info is required")
         return self.entity_info(
             resolved_target,
             query=info,
